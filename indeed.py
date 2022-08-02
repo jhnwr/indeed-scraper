@@ -2,12 +2,10 @@ from requests_html import HTMLSession
 import csv
 
 
-def job_data_get(s, location: str, start: int) -> list:
-    # return the elements for each job car
-    print(f'Retrieving jobs for {location}, page {start}')
-    url = f'https://uk.indeed.com/jobs?q=python&l={location}&start={start}'
+def job_data_get(s, url: str) -> tuple:
+    # return the elements for each job card
     r = s.get(url)
-    return r.html.find('div.job_seen_beacon')
+    return r.html.find('ul.pagination-list a[aria-label=Next]'), r.html.find('div.job_seen_beacon')
 
 
 def parse_html(job) -> dict:
@@ -33,12 +31,22 @@ def export(results):
 
 
 def main():
+    job_search = 'python'
+    baseurl = 'https://uk.indeed.com'
+
     s = HTMLSession()
     results = []
-    for x in range(0, 50, 10):
-        jobs = job_data_get(s, 'london', x)
-        for job in jobs:
+    url = baseurl + f'/jobs?q={job_search}&l=Bristol'
+    while True:
+        jobs = job_data_get(s, url)
+        for job in jobs[1]:
             results.append(parse_html(job))
+        try:
+            url = baseurl + jobs[0][0].attrs['href']
+            print(url)
+        except IndexError as err:
+            print(err)
+            break
     export(results)
 
 
